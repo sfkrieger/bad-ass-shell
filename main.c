@@ -36,6 +36,10 @@ int main(void) {
 
 /* processes the line - reads and interprets */
 void processline(char *line) {
+	char newline[LINELEN*2];
+	newline[((LINELEN*2) - 1)] = 0;
+	int ret = expand(line, newline, LINELEN*2);
+	printf("Return value %d\n", ret);
 
 	/* first process the line - find out whats inside */
 	char** argv = malloc(sizeof(char***));

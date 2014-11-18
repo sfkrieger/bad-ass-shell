@@ -29,13 +29,19 @@
 #define INVALID_INPUT -2
 #define UNKNOWN_ERROR -3
 #define ERROR -1
+#define FORMAT_ERROR -4
 
 /* Typedefs */
 typedef int (*func_ptr)(int num_args, char **args);
+typedef struct {
+	int org_index;
+	int new_index;
+} places;
 
 /* Prototypes */
 void processline (char *line);
 int arg_parse(char *line, char ***argvp);
+int expand (char *orig, char *new, int newsize);
 
 //returns 0 if this isn't a builtin function
 //returns non zero corresponding to the value of the builtin function...
