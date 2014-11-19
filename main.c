@@ -37,9 +37,10 @@ int main(void) {
 /* processes the line - reads and interprets */
 void processline(char *line) {
 	char newline[LINELEN*2];
+	memset(newline, 0, LINELEN*2);
 	newline[((LINELEN*2) - 1)] = 0;
 	int ret = expand(line, newline, LINELEN*2);
-	printf("Return value %d\n", ret);
+	printf("Newline: %s, Return value %d\n", newline, ret);
 
 	/* first process the line - find out whats inside */
 	char** argv = malloc(sizeof(char***));
@@ -57,7 +58,7 @@ void processline(char *line) {
 //		int error_code = run_builtin(built_in, num_args, argv); /* todo: you never actually deal with the error codes */
 		int error_code = funct(num_args, argv); /* todo: you never actually deal with the error codes */
 
-		printf("error code: %d \n", error_code);
+		printf("Error code from builtin: %d \n", error_code);
 		goto end;
 	}
 

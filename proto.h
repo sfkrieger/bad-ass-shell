@@ -22,6 +22,9 @@
 #define LINELEN 1024
 #define EXIT 1
 #define AECHO 2
+#define CHDIR 3
+#define ENVSET 4
+#define ENVUNSET 5
 
 /* Return codes */
 #define SUCCESS 0

@@ -36,6 +36,7 @@
 #include "proto.h"
 
 int expand_env(char *orig, char *new, int newsize0, places* places);
+int repl_pid(char *orig, char *new, int newsize0, places* places);
 
 int expand(char *orig, char *new, int newsize0) {
 
@@ -49,63 +50,101 @@ int expand(char *orig, char *new, int newsize0) {
 	int not_over = 1; /* flip when finished */
 
 	while (not_over && (places->new_index < newsize0)) {
-		if(orig[places->org_index] == 0)
+		char ch = orig[places->org_index++]; //increments index right after..
+//		printf("Current char %c\n", ch);
+		switch (ch) {
+		case 0:
 			not_over = 0;
+			break;
+		case '$':{
+			char next = orig[places->org_index++]; //increments index right after.. (index should always be pointing to the unprocessed thing
+//			printf("Next char %c\n", next);
 
-		if (orig[places->org_index] == '$' && orig[++(places->org_index)] == '{') {
-			succ = expand_env(orig, new, newsize0, places);
+			switch (next){
+				case '{':
+					succ = expand_env(orig, new, newsize0, places);
+					break;
+				case '$':
+					succ = repl_pid(orig, new, newsize0, places);
+					break;
+				default:
+					places->org_index--;
+//					printf("This should never happen, shouldn't have a $ and nothing else...\n");
+					break;
+			}
+
+			break;
 		}
-//		else if(orig[places->org_index] == '$' && orig[++(places->org_index)] == '$' ){
-//
-//		}
-		else
-			new[places->new_index++] = orig[places->org_index++];
+		default: //just copy the character over..
+			new[places->new_index++] = ch;
+//			printf("Just copied the char (%c) over in default - new string: %s\n", ch, new);
+			break;
+		}
+
+		if(succ != 0){
+			fprintf(stderr, "Error code %d", succ);
 		}
 
 
-
+	}
 	return succ;
 }
 
 int expand_env(char *orig, char *new, int newsize0, places* places) {
-	char cur = orig[++places->org_index];
-	printf("current char: %c\n", cur);
+	char cur = orig[places->org_index];
+	printf("In expand env - current char: %c\n", cur);
 
 	/* begining and end pointers into the original array referencing the env variable to look up*/
 	char* beg = (orig + places->org_index);
 	char* end = strchr(beg, '}');
 	int length = end - beg;
-
 	if (!end) {
-		perror("Error in expansion variable, format error");
 		return FORMAT_ERROR;
 	}
 
 	//put a null byte where the end is so that you can use the string library?
 	*end = 0;
 	char *env_name = getenv(beg);
+	int env_size = 0;
+	if(env_name){
+		printf("Found one\n");
+		char* dont_seg = (new + places->new_index);
+		strcpy(dont_seg, env_name);
+		env_size = strlen(env_name);
+	}
 
 	//copy the environment name into the new array
-	strcpy((new + places->new_index), env_name);
-	int env_size = strlen(env_name);
 	//advance the original index by the size of the path
 	places->org_index = places->org_index + length + 1;
-	places->new_index = places->new_index + env_size + 1;
-	printf(
-			"String stats: should be a null byte: %c, "
-			"passed string: %s, "
-			"this should be the env name: %s, "
-			"this should be the new copied line! %s, "
-			"nothing should be here (its from the new line) %s, "
-			"and the next args %s\n",
-			*end,
-			beg,
-			env_name,
-			new,
-			(new + places->new_index),
-			(orig+places->org_index));
+//	printf("The next thing to see on the original string is %s\n", (orig + places->org_index));
+	places->new_index = places->new_index + env_size;
+//	printf(
+//			"String stats: should be a null byte: %c, "
+//			"passed string: %s, "
+//			"this should be the env name: %s, "
+//			"this should be the new copied line! %s, "
+//			"nothing should be here (its from the new line) %s, "
+//			"and the next args %s\n",
+//			*end,
+//			beg,
+//			env_name,
+//			new,
+//			(new + places->new_index),
+//			(orig + places->org_index));
+//	printf("\n ----- new line in the expansion : %s ========\n", new);
 	return 0;
 
+}
+
+int repl_pid(char *orig, char *new, int newsize0, places* places){
+	int pid = getpid();
+	printf("Pid %d\n", pid);
+	int num_cpy = snprintf((new + places->new_index), 6, "%d", pid);
+
+	places->new_index = places->new_index + num_cpy; //4 bytes for the size of getpid
+//	new[places->new_index++] = 0;
+	printf("Printing old string after replaced pid %s, printing new string %s\n", (orig + places->org_index), new);
+	return SUCCESS;
 }
 
 int alt(char *orig, char *new, int newsize0) {
