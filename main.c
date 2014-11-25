@@ -3,18 +3,38 @@
  */
 #include "proto.h"
 /* Shell main */
+int argc;
+char** argv;
+FILE* flog;
 
-int main(void) {
+int main (int mainargc, char **mainargv) {
+
+	//collecting arguments, saving globally
+	argc = mainargc;
+	argv = mainargv;
+
+	//streaming input from file or stdin
 	char buffer[LINELEN];
 	int len;
+	FILE *stream = stdin;
+	flog = fopen("log_file", "a");
+
+	/* Check how to read input */
+	if(argc > 1){
+		stream = fopen(argv[1], "r");
+		if(!stream){
+			exit(NO_FILE);
+		}
+	}
 
 	while (1) {
 
 		/* prompt and get line */
-		fprintf(stderr, "%% "); /* this gets redirected to stderr */
+		if(stream == stdin)
+			fprintf(stderr, "%% "); /* this gets redirected to stderr */
 
 		//puts max LINELEN from stdin into buffer
-		if (fgets(buffer, LINELEN, stdin) != buffer)
+		if (fgets(buffer, LINELEN, stream) != buffer)
 			/* end of file - ctl d - this signifies */
 			break;
 
@@ -27,7 +47,7 @@ int main(void) {
 		processline(buffer);
 	}
 
-	if (!feof(stdin))
+	if (!feof(stream))
 		/* double check on fgets */
 		perror("read");
 
@@ -36,32 +56,37 @@ int main(void) {
 
 /* processes the line - reads and interprets */
 void processline(char *line) {
+
+	/* ================== EXPANSION ==================== */
+	/* checking for expansions, modifies the input line into the 'expanded version' */
 	char newline[LINELEN*2];
 	memset(newline, 0, LINELEN*2);
 	newline[((LINELEN*2) - 1)] = 0;
-	int ret = expand(line, newline, LINELEN*2);
-	printf("Newline: %s, Return value %d\n", newline, ret);
+	int ret = expand(line, newline, LINELEN*2); //error code for expansion...
 
+	/* printing to log and error code */
+	fprintf(flog, "Newline: %s, Return value %d\n", newline, ret);
+	(ret == 0 ? : fprintf(flog, "Returned an error code for the expansion of env variables"));
+
+	/* ================= ARG PARSE ==================== */
 	/* first process the line - find out whats inside */
 	char** argv = malloc(sizeof(char***));
-	int num_args = arg_parse(line, &argv);
+	int num_args = arg_parse(newline, &argv);
 
-	if(num_args == 0){ /* if there's nothing there, don't do anything */
+	if(num_args == 0) /* if there's nothing there, don't do anything */
 		goto end;
-	}
 
+	/* ================= BUILT IN ==================== */
 	/* then check if its a builtin */
 	func_ptr funct;
 	int built_in = check_builtin(num_args, argv, &funct);
-//	int built_in = check_builtin(num_args, argv);
 	if(built_in){
-//		int error_code = run_builtin(built_in, num_args, argv); /* todo: you never actually deal with the error codes */
 		int error_code = funct(num_args, argv); /* todo: you never actually deal with the error codes */
-
-		printf("Error code from builtin: %d \n", error_code);
+		(error_code == 0 ? : fprintf(flog, "Error code from builtin: %d \n", error_code));
 		goto end;
 	}
 
+	/* ================= RUN COMMAND ==================== */
 	/* Start a new process to do the job. */
 	pid_t cpid;
 	int status;

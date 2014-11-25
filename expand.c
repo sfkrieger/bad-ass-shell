@@ -4,45 +4,21 @@
  *	 This is the THIRD in the series: therefore all error codes are going to be in the range of -3*
  *  Created on: Nov 17, 2014
  *      Author: Samiam
- *
- *      In the function processline(), you will add a call to a new function called ``expand''.
- *
- *     The return int should be a value that means ``expand was successful'' or ``expand had an error
- *     ``expand()'' should not change the original line.
- *
- *     It processes the original line as explained below and produces a new line.
- *
- *     This call to expand must be called before arg_parse() because the new line is what must be passed to arg_parse.
- *
- *     Also, you should just declare an array in processline() for the new line. Do not malloc() space for this new line.
- *
- *     expand() is to process the original line exactly once, starting with the first character (orig[0]) and looping to the last character.
- *     It should do this loop exactly once and do all the required processing during this one loop.
- *     When expand finds text that needs replacing, it replaces the text with the required new text and continues processing the original text at the point after the replaced text.
- *     Do not expand the new text. The basic processing done by expand() is to copy each character, one at a time, to the new string unless it detects that the current character is part of text that needs to be replaced. In that case, expand() adds the new text (expansion text) to the new string as specified by the replacement. Be careful to not write code that is order n squared. Also, remember that strlen(3) is an order n operation.
- In expand(), replace ${NAME} in the original string with the value of the environment variable of the same name. (Yes, the braces are part of the syntax. $NAME is not processed as an environment variable.) This value of the environment variable is placed in the new string. If the name does not exist in the environment, then it is replaced with the null string. This is done for all ${..}s found in the original string. In ALL cases the ${NAME} will not appear in the new string. If you find a ${ and do not find a closing }, print an error message and stop processing the line. Read about the library function getenv(3).
- Note: Replacing one string in the original line with another string in the new line is a task that will be done several more times during this project. It would be best to write helper functions to make it easy in expand() to add similar functionality in a slightly different context.
+*
  */
-
-/*
- * params:
- * 		new should be a pointer to a fixed size array similar to buffer in main().
- *     	newsize is the number of characters in the new array
- *  	signifies maximum numbers of characters that may safely be put into the parameter new.
- */
-// FIRST PASS: todo trying it out with passing the whole thing to the helper function when i see a '$' sign
-//ALSO: totally assuming the array pointed to by orig is null byte terminated...(which it is..)
 #define NO_QUOTE -31
+#define NEG_VAL -32
 #include "proto.h"
+#include <ctype.h>
+
 
 int expand_env(char *orig, char *new, int newsize0, places* places);
 int repl_pid(char *orig, char *new, int newsize0, places* places);
+int repl_arg(char *orig, char *new, int newsize0, places* places);
 
 int expand(char *orig, char *new, int newsize0) {
 
-	/*
-	 * local vars
-	 */
+	/* local vars */
 	places* places = malloc(sizeof(places));
 	places->new_index = 0; /* new array index */
 	places->org_index = 0; /* index in original array */
@@ -51,48 +27,32 @@ int expand(char *orig, char *new, int newsize0) {
 
 	while (not_over && (places->new_index < newsize0)) {
 		char ch = orig[places->org_index++]; //increments index right after..
-//		printf("Current char %c\n", ch);
-		switch (ch) {
-		case 0:
+		if(ch == 0){
 			not_over = 0;
-			break;
-		case '$':{
-			char next = orig[places->org_index++]; //increments index right after.. (index should always be pointing to the unprocessed thing
-//			printf("Next char %c\n", next);
-
-			switch (next){
-				case '{':
-					succ = expand_env(orig, new, newsize0, places);
-					break;
-				case '$':
-					succ = repl_pid(orig, new, newsize0, places);
-					break;
-				default:
-					places->org_index--;
-//					printf("This should never happen, shouldn't have a $ and nothing else...\n");
-					break;
+		}else if(ch == '$'){
+			char next = orig[places->org_index]; //increments index right after.. (index should always be pointing to the unprocessed thing
+			if(isdigit(next)){
+				succ = repl_arg(orig, new, newsize0, places);
+			}else if(next == '{'){
+				places->org_index++;
+				succ = expand_env(orig, new, newsize0, places);
+			}else if('$'){
+				places->org_index++;
+				succ = repl_pid(orig, new, newsize0, places);
 			}
-
-			break;
-		}
-		default: //just copy the character over..
+		}else
 			new[places->new_index++] = ch;
-//			printf("Just copied the char (%c) over in default - new string: %s\n", ch, new);
-			break;
-		}
 
-		if(succ != 0){
-			fprintf(stderr, "Error code %d", succ);
-		}
+		if(succ != 0)
+			fprintf(flog, "Error code %d\n", succ);
+	} //end of string...
 
-
-	}
 	return succ;
 }
 
 int expand_env(char *orig, char *new, int newsize0, places* places) {
 	char cur = orig[places->org_index];
-	printf("In expand env - current char: %c\n", cur);
+	fprintf(flog,"In expand env - current char: %c\n", cur);
 
 	/* begining and end pointers into the original array referencing the env variable to look up*/
 	char* beg = (orig + places->org_index);
@@ -107,7 +67,7 @@ int expand_env(char *orig, char *new, int newsize0, places* places) {
 	char *env_name = getenv(beg);
 	int env_size = 0;
 	if(env_name){
-		printf("Found one\n");
+		fprintf(flog,"Found one\n");
 		char* dont_seg = (new + places->new_index);
 		strcpy(dont_seg, env_name);
 		env_size = strlen(env_name);
@@ -116,35 +76,63 @@ int expand_env(char *orig, char *new, int newsize0, places* places) {
 	//copy the environment name into the new array
 	//advance the original index by the size of the path
 	places->org_index = places->org_index + length + 1;
-//	printf("The next thing to see on the original string is %s\n", (orig + places->org_index));
+	fprintf(flog,"The next thing to see on the original string is %s\n", (orig + places->org_index));
 	places->new_index = places->new_index + env_size;
-//	printf(
-//			"String stats: should be a null byte: %c, "
-//			"passed string: %s, "
-//			"this should be the env name: %s, "
-//			"this should be the new copied line! %s, "
-//			"nothing should be here (its from the new line) %s, "
-//			"and the next args %s\n",
-//			*end,
-//			beg,
-//			env_name,
-//			new,
-//			(new + places->new_index),
-//			(orig + places->org_index));
-//	printf("\n ----- new line in the expansion : %s ========\n", new);
+
 	return 0;
 
 }
 
 int repl_pid(char *orig, char *new, int newsize0, places* places){
 	int pid = getpid();
-	printf("Pid %d\n", pid);
+	fprintf(flog,"Pid %d\n", pid);
 	int num_cpy = snprintf((new + places->new_index), 6, "%d", pid);
 
 	places->new_index = places->new_index + num_cpy; //4 bytes for the size of getpid
 //	new[places->new_index++] = 0;
-	printf("Printing old string after replaced pid %s, printing new string %s\n", (orig + places->org_index), new);
+	fprintf(flog,"Printing old string after replaced pid %s, printing new string %s\n", (orig + places->org_index), new);
 	return SUCCESS;
+}
+
+int repl_arg(char *orig, char *new, int newsize0, places* places){
+	char ch = orig[places->org_index++];
+	int n = 0;
+	int i = 0;
+	char str[argc];
+
+	while(ch > 47 && ch < 58){
+		//then its a digit char
+		str[i++] = ch;
+		ch = orig[places->org_index++];
+		fprintf(flog,"char %c\n", ch);
+	}
+
+	str[i] = 0;
+	n = atoi(str);
+
+	if(n < 0)
+		return NEG_VAL;
+	else if(n + 1 >= argc){ //beyond the number
+		//replace with space
+		return SUCCESS;
+
+	}else{
+		//if there are arguments passed then argc > 1, and n must be incremented
+		if(argc > 1){
+			n++;
+		}
+		char *argv_copy = argv[n];
+		int len = strlen(argv[n]);
+		char* to_cpy = argv[n];
+
+		strncpy((new + places->new_index), to_cpy, len);
+		places->new_index += len;
+	}
+
+
+
+	fprintf(flog,"value of n: %d, value of ch: %c, string %s\n", n, ch, str);
+	return 0;
 }
 
 int alt(char *orig, char *new, int newsize0) {
@@ -160,7 +148,6 @@ int alt(char *orig, char *new, int newsize0) {
 		switch (ch) {
 		case '$':
 			//todo: does this increase the size of index? or just pass the added size?
-			//			succ = expand_env(orig, new, newsize0, index++, rep_index);
 			break;
 
 		}
@@ -169,3 +156,4 @@ int alt(char *orig, char *new, int newsize0) {
 
 	return succ;
 }
+

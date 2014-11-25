@@ -27,16 +27,16 @@ int check_builtin(int num_args, char **argvp, func_ptr *ptr) {
 		*ptr = &exit_w;
 		return EXIT;
 	} else if (!strcmp(first, "aecho")) {
-		printf("got an aecho");
+		fprintf(flog,"got an aecho\n");
 		*ptr = &aecho;
 		return AECHO;
 	} else if (!strcmp(first, "envset")) {
-		printf("In envset\n");
+		fprintf(flog,"In envset\n");
 		*ptr = &envset;
 		return ENVSET;
 	} else if(!strcmp(first, "envunset")) {
 		*ptr = &envunset;
-		printf("In envunset\n");
+		fprintf(flog,"In envunset\n");
 		return ENVUNSET;
 	} else if(!strcmp(first, "cd")){
 		*ptr = &ch_dir;
@@ -68,7 +68,7 @@ int aecho(int num_args, char **argvp) {
 	int index = 1;
 	int last_index = num_args - 1;
 	if (num_args == 1) {
-		printf("\n");
+		fprintf(flog,"\n");
 	} else {
 		if (strcmp(argvp[index], "-n") == 0) {
 			new_line = 1;
@@ -103,7 +103,7 @@ int ch_dir(int num_args, char **argvp){
 
 	char buffer[LINELEN];
 	if (getcwd (buffer, LINELEN) == buffer)
-	        printf("Your cur working dir %s, error code %d, argument %s\n", buffer, err, dir);
+	        fprintf(flog,"Your cur working dir %s, error code %d, argument %s\n", buffer, err, dir);
 
 	if(!err)
 		return NO_DIR_CHANGE;
@@ -121,7 +121,7 @@ int envset(int num_args, char **argvp){
 	int success = setenv(name, value, 1);
 
 	if(success != 0){
-		printf("Couldn't set the env variable for some reason: %d\n", success);
+		fprintf(flog,"Couldn't set the env variable for some reason: %d\n", success);
 		return ENV_SET;
 	}
 
@@ -135,11 +135,11 @@ int envunset(int num_args, char **argvp){
 	}
 
 	char* name = argvp[1];
-	printf("Trying to unset the env var %s", name);
+	fprintf(flog,"Trying to unset the env var %s", name);
 
 	int success = unsetenv(name);
 	if(success != 0){
-		printf("Couldn't unset the env variable for some reason: %d\n", success);
+		fprintf(flog,"Couldn't unset the env variable for some reason: %d\n", success);
 		return ENV_UNSET;
 	}
 
@@ -152,11 +152,11 @@ int exit_w(int num_args, char **argvp) {
 		char *param = argvp[1];
 		int val = atoi(param);
 		if (val) {
-			printf("Tried to exit, this is the value of the param %d\n", val);
+			fprintf(flog,"Tried to exit, this is the value of the param %d\n", val);
 			exit(val);
 		}
 	} else {
-		printf("SEEE YA LATER BETCCH\n");
+		fprintf(flog,"SEEE YA LATER BETCCH\n");
 		exit(0);
 	}
 	return 0;

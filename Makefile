@@ -5,7 +5,7 @@ CC=gcc
 # options I'll pass to the compiler.
 #wall means generate more warning
 # this file had a -c flag i'm not sure why..
-CFLAGS=-Wall -ggdb -g
+CFLAGS=-Wall -ggdb -g -Wno-unused-value -Wno-unused-variable
 
 all: msh
 

@@ -6,17 +6,15 @@
  */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <errno.h>
-#include <stdlib.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 
 #ifndef ASS1_H_
 #define ASS1_H_
-
-
 
 /* Constants */
 #define LINELEN 1024
@@ -33,6 +31,8 @@
 #define UNKNOWN_ERROR -3
 #define ERROR -1
 #define FORMAT_ERROR -4
+#define CANT_OPEN 127
+#define NO_FILE -5
 
 /* Typedefs */
 typedef int (*func_ptr)(int num_args, char **args);
@@ -46,10 +46,13 @@ void processline (char *line);
 int arg_parse(char *line, char ***argvp);
 int expand (char *orig, char *new, int newsize);
 
-//returns 0 if this isn't a builtin function
 //returns non zero corresponding to the value of the builtin function...
 int check_builtin(int num_args, char **argvp, func_ptr *ptr);
 int run_builtin(int code, int num_args, char **argvp);
 
+/* globals */
+extern int argc;
+extern char** argv;
+extern FILE* flog;
 
 #endif /* ASS1_H_ */

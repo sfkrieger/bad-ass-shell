@@ -1,6 +1,6 @@
 /*
  * arg_parse.c
- *
+ * FILE #1 - ERROR CODES WILL BE PRECEEDED BY A 1
  *  Created on: Nov 10, 2014
  *      Author: Samiam
  */
@@ -27,7 +27,7 @@ int arg_parse(char *line, char ***argvp) {
 			num_quote++;
 		} else { //there's a real character
 			if (was_white) {
-				printf("Hit the next string starting with char: %c\n", line[i]);
+//				fprintf(flog,"Hit the next string starting with char: %c\n", line[i]);
 				size++;
 				was_white = 0;
 				has_smt = 1;
@@ -51,7 +51,7 @@ int arg_parse(char *line, char ***argvp) {
 		return SUCCESS;
 	}
 
-	printf("=======Size of this string: %d===========\n", size);
+//	fprintf(flog,"=======Size of this string: %d===========\n", size);
 
 	//2. malloc an array of size size
 	char** array = (char**) malloc((size + 1) * sizeof(char*)); /*array of pointers */
@@ -62,12 +62,12 @@ int arg_parse(char *line, char ***argvp) {
 	while (i < len) {
 		//		if theres whitespace...
 		if (line[i] == '\0') {
-			//			printf("Found a null byte at this spot, %c", line[i]);
+			//			fprintf(flog,"Found a null byte at this spot, %c", line[i]);
 			was_white = 1;
 		} else { //there is a char there
 			//and the previous thing was a null byte
 			if (was_white) {
-				//				printf(
+				//				fprintf(flog,
 				//						"Adding a ref to the next string starting with char: %c\n",
 				//						line[i]);
 				was_white = 0;
