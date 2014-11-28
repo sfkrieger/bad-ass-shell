@@ -8,6 +8,8 @@
  */
 #define NO_QUOTE -31
 #define NEG_VAL -32
+#define NO_ROOM -33
+#define INTERNAL_ERROR -34
 #include "proto.h"
 #include <ctype.h>
 
@@ -15,6 +17,7 @@
 int expand_env(char *orig, char *new, int newsize0, places* places);
 int repl_pid(char *orig, char *new, int newsize0, places* places);
 int repl_arg(char *orig, char *new, int newsize0, places* places);
+int repl_arg_n(char *orig, char *new, int newsize0, places* places);
 
 int expand(char *orig, char *new, int newsize0) {
 
@@ -36,9 +39,13 @@ int expand(char *orig, char *new, int newsize0) {
 			}else if(next == '{'){
 				places->org_index++;
 				succ = expand_env(orig, new, newsize0, places);
-			}else if('$'){
+			}else if(next == '$'){
 				places->org_index++;
 				succ = repl_pid(orig, new, newsize0, places);
+			}else if(next == '#'){
+				places->org_index++;
+				succ = repl_arg_n(orig, new, newsize0, places);
+
 			}
 		}else
 			new[places->new_index++] = ch;
@@ -129,10 +136,33 @@ int repl_arg(char *orig, char *new, int newsize0, places* places){
 		places->new_index += len;
 	}
 
-
-
 	fprintf(flog,"value of n: %d, value of ch: %c, string %s\n", n, ch, str);
 	return 0;
+}
+
+int repl_arg_n(char *orig, char *new, int newsize0, places* places){
+	char buff[4];
+	int num_args = argc - 1;
+	fprintf(flog, "Argc %d, num_args %d\n", argc, num_args);
+
+	int num_digs = snprintf(buff, 4, "%d", num_args); /*if num digs is 4 then the buffer was truncated... */
+
+	if(num_digs > 3){
+		fprintf(flog, "Error too many digits in the args, didn't sub\n");
+		return INTERNAL_ERROR;
+	}
+
+	int space = newsize0 - places->new_index - 1;
+	if(num_digs > space)
+		return NO_ROOM;
+
+	strncpy((new + places->new_index), buff, num_digs);
+	places->new_index = places->new_index + num_digs; //todo: it copies an end of string null byte!! be careful!
+	fprintf(flog, "Replacing the #: New string %s\n", new);
+	return SUCCESS;
+//	(check_spc(new, newsize0, places) < 0) ? return NO_SPACE : sleep(0);
+
+
 }
 
 int alt(char *orig, char *new, int newsize0) {

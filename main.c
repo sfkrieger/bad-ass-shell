@@ -4,6 +4,8 @@
 #include "proto.h"
 /* Shell main */
 int argc;
+int u_argc;
+int i_argv;
 char** argv;
 FILE* flog;
 
@@ -12,6 +14,8 @@ int main (int mainargc, char **mainargv) {
 	//collecting arguments, saving globally
 	argc = mainargc;
 	argv = mainargv;
+	i_argv = 0;
+	u_argc = mainargc;
 
 	//streaming input from file or stdin
 	char buffer[LINELEN];
@@ -23,6 +27,7 @@ int main (int mainargc, char **mainargv) {
 	if(argc > 1){
 		stream = fopen(argv[1], "r");
 		if(!stream){
+			perror("Could not find script file");
 			exit(NO_FILE);
 		}
 	}

@@ -5,6 +5,13 @@
  *      Author: Samiam
  */
 #include "proto.h"
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <unistd.h>
+#include <pwd.h>
+#include <grp.h>
+#include <time.h>
+
 
 //helpers
 int aecho(int num_args, char **argvp);
@@ -12,12 +19,16 @@ int ch_dir(int num_args, char **argvp);
 int envset(int num_args, char **argvp);
 int envunset(int num_args, char **argvp);
 int exit_w(int num_args, char **argvp);
+int sstat(int num_args, char **argvp);
+int shift(int num_args, char **argvp);
+int unshift(int num_args, char **argvp);
 
 #define TOO_FEW_ARGS -21
 #define ENV_UNSET -22
 #define ENV_SET -23
 #define NO_HOME -24
 #define NO_DIR_CHANGE -25
+#define BAD_FILE -26
 
 /* todo: remove num_args and change argvp */
 int check_builtin(int num_args, char **argvp, func_ptr *ptr) {
@@ -41,6 +52,12 @@ int check_builtin(int num_args, char **argvp, func_ptr *ptr) {
 	} else if(!strcmp(first, "cd")){
 		*ptr = &ch_dir;
 		return CHDIR;
+	} else if(!strcmp(first, "sstat")){
+		*ptr = &sstat;
+		return SSTAT;
+	} else if(!strcmp(first, "shift")){
+		*ptr = &shift;
+		return SHIFT;
 	}
 	return 0;
 }
@@ -162,4 +179,62 @@ int exit_w(int num_args, char **argvp) {
 	return 0;
 }
 
+int sstat(int num_args, char **argvp){
+	char *f_name;
+	struct stat fileStat;
+	int i = 1;
+	int success;
+	struct passwd *usr_info;
+	struct group *grp_info;
+	int size;
+
+	/* time info */
+	struct tm *time_info;
+
+	while(i < num_args){
+		f_name = argvp[i];
+		success = stat(f_name, &fileStat);
+		if(success){
+			perror("Failure to collect stats on file");
+			return BAD_FILE;
+		}
+
+
+		size = fileStat.st_size;
+		time_info = localtime( &fileStat.st_mtime );
+		usr_info = getpwuid(fileStat.st_uid);
+		grp_info = getgrgid(fileStat.st_gid);
+
+	    printf("File name: \t%s\n",f_name);
+	    printf("Username: \t%s\n",usr_info->pw_name);
+	    printf("Group name: \t%s\n",grp_info->gr_name);
+	    printf("Number of Links: \t%d\n",fileStat.st_nlink);
+	    printf("Size: \t%llu\n", fileStat.st_size);
+		printf("File Permissions: \t");
+		printf( (S_ISDIR(fileStat.st_mode)) ? "d" : "-");
+		printf( (fileStat.st_mode & S_IRUSR) ? "r" : "-");
+		printf( (fileStat.st_mode & S_IWUSR) ? "w" : "-");
+		printf( (fileStat.st_mode & S_IXUSR) ? "x" : "-");
+		printf( (fileStat.st_mode & S_IRGRP) ? "r" : "-");
+		printf( (fileStat.st_mode & S_IWGRP) ? "w" : "-");
+		printf( (fileStat.st_mode & S_IXGRP) ? "x" : "-");
+		printf( (fileStat.st_mode & S_IROTH) ? "r" : "-");
+		printf( (fileStat.st_mode & S_IWOTH) ? "w" : "-");
+		printf( (fileStat.st_mode & S_IXOTH) ? "x" : "-");
+		printf("\nTime info: \t%s\n", asctime(time_info));
+
+
+
+		i++;
+	}
+	return 0;
+}
+
+int shift(int num_args, char **argvp){
+	return -1;
+}
+
+int unshift(int num_args, char **argvp){
+	return -1;
+}
 

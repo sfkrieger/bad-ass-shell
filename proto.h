@@ -23,6 +23,9 @@
 #define CHDIR 3
 #define ENVSET 4
 #define ENVUNSET 5
+#define SSTAT 6
+#define SHIFT 7
+#define UNSHIFT 8
 
 /* Return codes */
 #define SUCCESS 0
@@ -54,5 +57,7 @@ int run_builtin(int code, int num_args, char **argvp);
 extern int argc;
 extern char** argv;
 extern FILE* flog;
+extern int u_argc;
+extern int i_argv;
 
 #endif /* ASS1_H_ */
