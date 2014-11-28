@@ -57,7 +57,6 @@ int run_builtin(int code, int num_args, char **argvp);
 extern int argc;
 extern char** argv;
 extern FILE* flog;
-extern int u_argc;
-extern int i_argv;
+extern int base;
 
 #endif /* ASS1_H_ */

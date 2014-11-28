@@ -4,8 +4,7 @@
 #include "proto.h"
 /* Shell main */
 int argc;
-int u_argc;
-int i_argv;
+int base;
 char** argv;
 FILE* flog;
 
@@ -14,8 +13,7 @@ int main (int mainargc, char **mainargv) {
 	//collecting arguments, saving globally
 	argc = mainargc;
 	argv = mainargv;
-	i_argv = 0;
-	u_argc = mainargc;
+	base = 0;
 
 	//streaming input from file or stdin
 	char buffer[LINELEN];
@@ -75,8 +73,8 @@ void processline(char *line) {
 
 	/* ================= ARG PARSE ==================== */
 	/* first process the line - find out whats inside */
-	char** argv = malloc(sizeof(char***));
-	int num_args = arg_parse(newline, &argv);
+	char** line_args = malloc(sizeof(char***));
+	int num_args = arg_parse(newline, &line_args);
 
 	if(num_args == 0) /* if there's nothing there, don't do anything */
 		goto end;
@@ -84,9 +82,9 @@ void processline(char *line) {
 	/* ================= BUILT IN ==================== */
 	/* then check if its a builtin */
 	func_ptr funct;
-	int built_in = check_builtin(num_args, argv, &funct);
+	int built_in = check_builtin(num_args, line_args, &funct);
 	if(built_in){
-		int error_code = funct(num_args, argv); /* todo: you never actually deal with the error codes */
+		int error_code = funct(num_args, line_args); /* todo: you never actually deal with the error codes */
 		(error_code == 0 ? : fprintf(flog, "Error code from builtin: %d \n", error_code));
 		goto end;
 	}
@@ -104,8 +102,8 @@ void processline(char *line) {
 	/* Check for who we are! value of cpid is the only thing different, both processes are doing the same thing now! */
 	if (cpid == 0) {
 		/* We are the child! */
-		char* prog = argv[0];
-		execvp(prog, argv);
+		char* prog = line_args[0];
+		execvp(prog, line_args);
 		perror("exec"); //todo: don't need to free params?
 		exit(127);
 	}
@@ -115,7 +113,7 @@ void processline(char *line) {
 		perror("wait");
 
 	end:
-		free(argv);//don't need to free in child!
+		free(line_args);//don't need to free in child!
 		return;
 
 

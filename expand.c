@@ -113,7 +113,7 @@ int repl_arg(char *orig, char *new, int newsize0, places* places){
 		ch = orig[places->org_index++];
 		fprintf(flog,"char %c\n", ch);
 	}
-
+	places->org_index--; //it indexed past to the next one cause it had to fail the condition!
 	str[i] = 0;
 	n = atoi(str);
 
@@ -122,12 +122,17 @@ int repl_arg(char *orig, char *new, int newsize0, places* places){
 	else if(n + 1 >= argc){ //beyond the number
 		//replace with space
 		return SUCCESS;
-
 	}else{
-		//if there are arguments passed then argc > 1, and n must be incremented
+		//if there are arguments passed then argc > 1, and n must be incremented AND shift must be accounted for
 		if(argc > 1){
 			n++;
+			n += base;
 		}
+
+		if(n >= argc){
+			return SUCCESS;
+		}
+
 		char *argv_copy = argv[n];
 		int len = strlen(argv[n]);
 		char* to_cpy = argv[n];
@@ -142,7 +147,7 @@ int repl_arg(char *orig, char *new, int newsize0, places* places){
 
 int repl_arg_n(char *orig, char *new, int newsize0, places* places){
 	char buff[4];
-	int num_args = argc - 1;
+	int num_args = argc - base - 1;
 	fprintf(flog, "Argc %d, num_args %d\n", argc, num_args);
 
 	int num_digs = snprintf(buff, 4, "%d", num_args); /*if num digs is 4 then the buffer was truncated... */

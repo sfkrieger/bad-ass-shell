@@ -12,7 +12,6 @@
 #include <grp.h>
 #include <time.h>
 
-
 //helpers
 int aecho(int num_args, char **argvp);
 int ch_dir(int num_args, char **argvp);
@@ -21,7 +20,6 @@ int envunset(int num_args, char **argvp);
 int exit_w(int num_args, char **argvp);
 int sstat(int num_args, char **argvp);
 int shift(int num_args, char **argvp);
-int unshift(int num_args, char **argvp);
 
 #define TOO_FEW_ARGS -21
 #define ENV_UNSET -22
@@ -29,6 +27,7 @@ int unshift(int num_args, char **argvp);
 #define NO_HOME -24
 #define NO_DIR_CHANGE -25
 #define BAD_FILE -26
+#define CANT_SHIFT -27
 
 /* todo: remove num_args and change argvp */
 int check_builtin(int num_args, char **argvp, func_ptr *ptr) {
@@ -38,24 +37,27 @@ int check_builtin(int num_args, char **argvp, func_ptr *ptr) {
 		*ptr = &exit_w;
 		return EXIT;
 	} else if (!strcmp(first, "aecho")) {
-		fprintf(flog,"got an aecho\n");
+		fprintf(flog, "got an aecho\n");
 		*ptr = &aecho;
 		return AECHO;
 	} else if (!strcmp(first, "envset")) {
-		fprintf(flog,"In envset\n");
+		fprintf(flog, "In envset\n");
 		*ptr = &envset;
 		return ENVSET;
-	} else if(!strcmp(first, "envunset")) {
+	} else if (!strcmp(first, "envunset")) {
 		*ptr = &envunset;
-		fprintf(flog,"In envunset\n");
+		fprintf(flog, "In envunset\n");
 		return ENVUNSET;
-	} else if(!strcmp(first, "cd")){
+	} else if (!strcmp(first, "cd")) {
 		*ptr = &ch_dir;
 		return CHDIR;
-	} else if(!strcmp(first, "sstat")){
+	} else if (!strcmp(first, "sstat")) {
 		*ptr = &sstat;
 		return SSTAT;
-	} else if(!strcmp(first, "shift")){
+	} else if (!strcmp(first, "shift")) {
+		*ptr = &shift;
+		return SHIFT;
+	}else if (!strcmp(first, "unshift")) {
 		*ptr = &shift;
 		return SHIFT;
 	}
@@ -85,7 +87,7 @@ int aecho(int num_args, char **argvp) {
 	int index = 1;
 	int last_index = num_args - 1;
 	if (num_args == 1) {
-		fprintf(flog,"\n");
+		fprintf(flog, "\n");
 	} else {
 		if (strcmp(argvp[index], "-n") == 0) {
 			new_line = 1;
@@ -106,30 +108,31 @@ int aecho(int num_args, char **argvp) {
 	return SUCCESS;
 }
 
-int ch_dir(int num_args, char **argvp){
+int ch_dir(int num_args, char **argvp) {
 	char* dir;
-	if(num_args < 2){
+	if (num_args < 2) {
 		dir = getenv("HOME");
-		if(!dir)
+		if (!dir)
 			return NO_HOME;
 
-	}else
+	} else
 		dir = argvp[1];
 
 	int err = chdir(dir);
 
 	char buffer[LINELEN];
-	if (getcwd (buffer, LINELEN) == buffer)
-	        fprintf(flog,"Your cur working dir %s, error code %d, argument %s\n", buffer, err, dir);
+	if (getcwd(buffer, LINELEN) == buffer)
+		fprintf(flog, "Your cur working dir %s, error code %d, argument %s\n",
+				buffer, err, dir);
 
-	if(!err)
+	if (!err)
 		return NO_DIR_CHANGE;
 
 	return SUCCESS;
 }
 
-int envset(int num_args, char **argvp){
-	if(num_args < 3){
+int envset(int num_args, char **argvp) {
+	if (num_args < 3) {
 		return TOO_FEW_ARGS;
 	}
 
@@ -137,26 +140,28 @@ int envset(int num_args, char **argvp){
 	char* value = argvp[2];
 	int success = setenv(name, value, 1);
 
-	if(success != 0){
-		fprintf(flog,"Couldn't set the env variable for some reason: %d\n", success);
+	if (success != 0) {
+		fprintf(flog, "Couldn't set the env variable for some reason: %d\n",
+				success);
 		return ENV_SET;
 	}
 
 	return SUCCESS;
 }
 
-int envunset(int num_args, char **argvp){
+int envunset(int num_args, char **argvp) {
 
-	if(num_args < 2){
+	if (num_args < 2) {
 		return TOO_FEW_ARGS;
 	}
 
 	char* name = argvp[1];
-	fprintf(flog,"Trying to unset the env var %s", name);
+	fprintf(flog, "Trying to unset the env var %s", name);
 
 	int success = unsetenv(name);
-	if(success != 0){
-		fprintf(flog,"Couldn't unset the env variable for some reason: %d\n", success);
+	if (success != 0) {
+		fprintf(flog, "Couldn't unset the env variable for some reason: %d\n",
+				success);
 		return ENV_UNSET;
 	}
 
@@ -169,17 +174,18 @@ int exit_w(int num_args, char **argvp) {
 		char *param = argvp[1];
 		int val = atoi(param);
 		if (val) {
-			fprintf(flog,"Tried to exit, this is the value of the param %d\n", val);
+			fprintf(flog, "Tried to exit, this is the value of the param %d\n",
+					val);
 			exit(val);
 		}
 	} else {
-		fprintf(flog,"SEEE YA LATER BETCCH\n");
+		fprintf(flog, "SEEE YA LATER BETCCH\n");
 		exit(0);
 	}
 	return 0;
 }
 
-int sstat(int num_args, char **argvp){
+int sstat(int num_args, char **argvp) {
 	char *f_name;
 	struct stat fileStat;
 	int i = 1;
@@ -191,50 +197,65 @@ int sstat(int num_args, char **argvp){
 	/* time info */
 	struct tm *time_info;
 
-	while(i < num_args){
+	while (i < num_args) {
 		f_name = argvp[i];
 		success = stat(f_name, &fileStat);
-		if(success){
+		if (success) {
 			perror("Failure to collect stats on file");
 			return BAD_FILE;
 		}
 
-
 		size = fileStat.st_size;
-		time_info = localtime( &fileStat.st_mtime );
+		time_info = localtime(&fileStat.st_mtime);
 		usr_info = getpwuid(fileStat.st_uid);
 		grp_info = getgrgid(fileStat.st_gid);
 
-	    printf("File name: \t%s\n",f_name);
-	    printf("Username: \t%s\n",usr_info->pw_name);
-	    printf("Group name: \t%s\n",grp_info->gr_name);
-	    printf("Number of Links: \t%d\n",fileStat.st_nlink);
-	    printf("Size: \t%llu\n", fileStat.st_size);
+		printf("File name: \t%s\n", f_name);
+		printf("Username: \t%s\n", usr_info->pw_name);
+		printf("Group name: \t%s\n", grp_info->gr_name);
+		printf("Number of Links: \t%d\n", fileStat.st_nlink);
+		printf("Size: \t%llu\n", fileStat.st_size);
 		printf("File Permissions: \t");
-		printf( (S_ISDIR(fileStat.st_mode)) ? "d" : "-");
-		printf( (fileStat.st_mode & S_IRUSR) ? "r" : "-");
-		printf( (fileStat.st_mode & S_IWUSR) ? "w" : "-");
-		printf( (fileStat.st_mode & S_IXUSR) ? "x" : "-");
-		printf( (fileStat.st_mode & S_IRGRP) ? "r" : "-");
-		printf( (fileStat.st_mode & S_IWGRP) ? "w" : "-");
-		printf( (fileStat.st_mode & S_IXGRP) ? "x" : "-");
-		printf( (fileStat.st_mode & S_IROTH) ? "r" : "-");
-		printf( (fileStat.st_mode & S_IWOTH) ? "w" : "-");
-		printf( (fileStat.st_mode & S_IXOTH) ? "x" : "-");
+		printf((S_ISDIR(fileStat.st_mode)) ? "d" : "-");
+		printf((fileStat.st_mode & S_IRUSR) ? "r" : "-");
+		printf((fileStat.st_mode & S_IWUSR) ? "w" : "-");
+		printf((fileStat.st_mode & S_IXUSR) ? "x" : "-");
+		printf((fileStat.st_mode & S_IRGRP) ? "r" : "-");
+		printf((fileStat.st_mode & S_IWGRP) ? "w" : "-");
+		printf((fileStat.st_mode & S_IXGRP) ? "x" : "-");
+		printf((fileStat.st_mode & S_IROTH) ? "r" : "-");
+		printf((fileStat.st_mode & S_IWOTH) ? "w" : "-");
+		printf((fileStat.st_mode & S_IXOTH) ? "x" : "-");
 		printf("\nTime info: \t%s\n", asctime(time_info));
-
-
 
 		i++;
 	}
 	return 0;
 }
 
-int shift(int num_args, char **argvp){
-	return -1;
+int shift(int num_args, char **argvp) {
+	int to_shift = 1;
+	if (num_args == 2)
+		to_shift = atoi(argvp[1]);
+
+	if(!strcmp(argvp[0], "unshift")){
+		to_shift = to_shift * -1;
+		if(num_args < 2){ //reset everything
+			base = 0;
+			to_shift = 0;
+		}
+	}
+
+
+
+	if ((to_shift + base >= argc) || (to_shift + base < 0)) {
+		printf("Too few arguments to shift. Failed shift");
+		return CANT_SHIFT;
+	}
+
+	base += to_shift;
+	return SUCCESS;
+
 }
 
-int unshift(int num_args, char **argvp){
-	return -1;
-}
 
