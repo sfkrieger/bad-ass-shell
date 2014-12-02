@@ -6,6 +6,10 @@
  */
 # include "proto.h"
 
+/*
+ * This function parses the line pointed to by line into an array of strings
+ * (referenced via a reference to an array of pointers -argvp)
+ */
 int arg_parse(char *line, char ***argvp) {
 	int len = strlen(line); /* length of the line - for index purposes*/
 	int i = 0; /* index */
@@ -18,30 +22,36 @@ int arg_parse(char *line, char ***argvp) {
 	int was_white = 1;
 
 	while (i < len) {
-
+		fprintf(flog, "Current char %c\n", line[i]);
 		if (line[i] == ' ' && (num_quote % 2) == 0) { //if theres whitespace and you're NOT in the string
 			was_white = 1;
 			line[i] = '\0'; //put a null byte
-		} else if (line[i] == '"') { // if there's a quote... it may mean
-			//todo: should i shift the whole string down,and decrement the len variable?
+		}else if(line[i] == '#' && (num_quote % 2) == 0){ // if there's a comment character and you're not in a string
+			//exit this, assume its the end of the line
+			line[i] = '\0';
+			len = i + 1; //todo: don't know if this is ob1?
+		} else if (line[i] == '"') { //there's a quote, so increment the number of quotes
 			num_quote++;
-		} else { //there's a real character
+			fprintf(flog, "Number of quotes: %d, string: %s\n", num_quote, line + i);
+			if(num_quote % 2 == 0) //second quote...put a null byte
+				line[i] = '\0';
+		}else { //there's a real character
 			if (was_white) {
-//				fprintf(flog,"Hit the next string starting with char: %c\n", line[i]);
-				size++;
+				fprintf(flog, "Hit the next string starting with char: %c, and incrementing the size\n", line[i]);
+				size++; //it was white, and now it isn't anymore, its something else so assume its the next arg
 				was_white = 0;
 				has_smt = 1;
 			}
 		}
 		i++;
-		/* todo: pretty sure you need to remove the quotations out of this shit */
+		/* todo: pretty sure you need to remove the quotations out of this shit - NEVER DO THAT AGAIN!*/
 	}
 
 	/* ----------------- now dealing with global issues ----------- */
 
 	/* first: mismatched quotes */
 	if (num_quote % 2 != 0) {
-		perror("Mismatched quotes"); /*todo: mismatched quotes, not a good error message*/
+		perror("Mismatched quotes, undefined behavior"); /*todo: mismatched quotes, not a good error message*/
 		return INVALID_INPUT;
 	}
 
@@ -51,7 +61,7 @@ int arg_parse(char *line, char ***argvp) {
 		return SUCCESS;
 	}
 
-//	fprintf(flog,"=======Size of this string: %d===========\n", size);
+	fprintf(flog,"=======Size of this string: %d===========\n", size);
 
 	//2. malloc an array of size size
 	char** array = (char**) malloc((size + 1) * sizeof(char*)); /*array of pointers */
@@ -62,15 +72,14 @@ int arg_parse(char *line, char ***argvp) {
 	while (i < len) {
 		//		if theres whitespace...
 		if (line[i] == '\0') {
-			//			fprintf(flog,"Found a null byte at this spot, %c", line[i]);
 			was_white = 1;
 		} else { //there is a char there
 			//and the previous thing was a null byte
 			if (was_white) {
-				//				fprintf(flog,
-				//						"Adding a ref to the next string starting with char: %c\n",
-				//						line[i]);
+				fprintf(flog, "Adding a ref to the next string starting with char: %c\n", line[i]);
 				was_white = 0;
+				if(line[i] == '"')
+					i++;
 				array[a_index] = &line[i];
 				a_index++;
 			}
@@ -78,6 +87,7 @@ int arg_parse(char *line, char ***argvp) {
 
 		i++;
 	}
+
 
 	*argvp = array;
 	return size;

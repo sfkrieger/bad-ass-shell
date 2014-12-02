@@ -1,4 +1,5 @@
 /*
+ * Questions: when to use perror?
  * ass2.c
  */
 #include "proto.h"
@@ -14,12 +15,15 @@ int main (int mainargc, char **mainargv) {
 	argc = mainargc;
 	argv = mainargv;
 	base = 0;
+	char *prompt = getenv("P1");
+	if(!prompt)
+			prompt = "% ";
 
 	//streaming input from file or stdin
 	char buffer[LINELEN];
 	int len;
 	FILE *stream = stdin;
-	flog = fopen("log_file", "a");
+	flog = fopen("log_file", "w+"); /* create a log file named log_file.. */
 
 	/* Check how to read input */
 	if(argc > 1){
@@ -30,18 +34,20 @@ int main (int mainargc, char **mainargv) {
 		}
 	}
 
+
+	//reading input in
 	while (1) {
 
 		/* prompt and get line */
 		if(stream == stdin)
-			fprintf(stderr, "%% "); /* this gets redirected to stderr */
+			fprintf(stderr, "%s", prompt); /* this gets redirected to stderr */
 
 		//puts max LINELEN from stdin into buffer
 		if (fgets(buffer, LINELEN, stream) != buffer)
 			/* end of file - ctl d - this signifies */
 			break;
 
-		/* Get rid of \n at end of buffer. */
+		/* Get rid of \n at end of buffer. Null byte terminate it instead */
 		len = strlen(buffer);
 		if (buffer[len - 1] == '\n')
 			buffer[len - 1] = 0;
@@ -54,6 +60,7 @@ int main (int mainargc, char **mainargv) {
 		/* double check on fgets */
 		perror("read");
 
+	fclose(flog);
 	return 0; /* Also known as exit (0); */
 }
 
@@ -64,19 +71,28 @@ void processline(char *line) {
 	/* checking for expansions, modifies the input line into the 'expanded version' */
 	char newline[LINELEN*2];
 	memset(newline, 0, LINELEN*2);
-	newline[((LINELEN*2) - 1)] = 0;
+	newline[((LINELEN*2) - 1)] = 0; //null byte terminate it
 	int ret = expand(line, newline, LINELEN*2); //error code for expansion...
 
 	/* printing to log and error code */
 	fprintf(flog, "Newline: %s, Return value %d\n", newline, ret);
-	(ret == 0 ? : fprintf(flog, "Returned an error code for the expansion of env variables"));
+	if(ret != 0){
+		printf("Expansion error: %d\n", ret);
+		fprintf(flog, "Returned an error code for the expansion of env variables");
+		return;
+	}
 
 	/* ================= ARG PARSE ==================== */
 	/* first process the line - find out whats inside */
-	char** line_args = malloc(sizeof(char***));
+	char** line_args = malloc(sizeof(char*));
 	int num_args = arg_parse(newline, &line_args);
 
-	if(num_args == 0) /* if there's nothing there, don't do anything */
+	int i;
+	for(i = 0; i <= num_args; i++){
+		fprintf(flog, "Arg number %d: %s\n", i+1, line_args[i]);
+	}
+
+	if(num_args < 1) /* if there's nothing there, don't do anything */
 		goto end;
 
 	/* ================= BUILT IN ==================== */

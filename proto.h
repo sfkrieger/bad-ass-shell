@@ -18,6 +18,7 @@
 
 /* Constants */
 #define LINELEN 1024
+#define LINELEN2 100
 #define EXIT 1
 #define AECHO 2
 #define CHDIR 3
